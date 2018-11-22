@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/rogbas/srectl/pkg/cloud/aws/ec2"
 	"github.com/spf13/cobra"
 )
 
@@ -61,5 +64,27 @@ func NewCmdDeleteCluster(out io.Writer) *cobra.Command {
 func RunDeleteCluster(out io.Writer, options *DeleteClusterOptions) error {
 
 	fmt.Fprintf(out, "Deleting cluster %s on %s", options.ClusterName, options.Region)
+	instances := []*awsec2.Instance{}
+	// What needs to be deleted:
+	// 	* AutoScaling Groups
+	//  * Launch Configs
+	// 	* Master EC2s
+	//	* ELBs
+	// 	* VPC
+
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	ec2Svc := ec2.NewService(awsec2.New(sess))
+
+	// Validating some basic filter on ec2 instances
+	instances, err := ec2Svc.InstanceByCluster(options.ClusterName)
+	if err != nil {
+		fmt.Println("Error", err)
+	} else {
+		fmt.Println("Success", instances)
+	}
+
 	return nil
 }
