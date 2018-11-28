@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Service) InstanceByCluster(clusterName string) ([]*ec2.Instance, error) {
+func (s *Service) GetInstanceByCluster(clusterName string) ([]*ec2.Instance, error) {
 	// glog.V(2).Infof("Looking for existing instance for machine %q in cluster %q", machine.Name, cluster.Name)
 
 	instances := []*ec2.Instance{}

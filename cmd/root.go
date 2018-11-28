@@ -20,7 +20,7 @@ const (
 var (
 	rootLong = `
 	srectl - automate frequent process executed by the sre team,
-	focused on reducing the toil.
+	focused on reducing toil.
 	`
 
 	rootShort = `srectl`
