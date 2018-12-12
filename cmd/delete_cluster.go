@@ -7,7 +7,9 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	awsasg "github.com/aws/aws-sdk-go/service/autoscaling"
+	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/rogbas/srectl/pkg/cloud/aws/autoscaling"
+	"github.com/rogbas/srectl/pkg/cloud/aws/ec2"
 	"github.com/spf13/cobra"
 )
 
@@ -76,13 +78,25 @@ func RunDeleteCluster(out io.Writer, options *DeleteClusterOptions) error {
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 
-	// ec2Svc := ec2.NewService(awsec2.New(sess))
+	//
 
 	asgSvc := autoscaling.NewService(awsasg.New(sess))
 
-	err := asgSvc.DeleteAutoScalingGroupsByCluster(options.ClusterName)
+	launchConfigList, err := asgSvc.DeleteAutoScalingGroupsByCluster(options.ClusterName)
 	if err != nil {
 		fmt.Println("Error deleting AutoScaling Groups", err)
+	}
+
+	// Delete the orphan LaunchConfigurations after removing the AutoScaling groups
+	err = asgSvc.DeleteLaunchConfigurations(launchConfigList)
+	if err != nil {
+		fmt.Println("Error deleting Launch Configurations", err)
+	}
+
+	ec2Svc := ec2.NewService(awsec2.New(sess))
+	err = ec2Svc.TerminateInstancesByCluster(options.ClusterName)
+	if err != nil {
+		fmt.Println("Error deleting ec2 instances", err)
 	}
 
 	return nil

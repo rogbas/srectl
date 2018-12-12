@@ -1,11 +1,47 @@
 package ec2
 
 import (
+	"fmt"
+
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/pkg/errors"
+	"github.com/golang/glog"
 )
 
-func (s *Service) GetInstanceByCluster(clusterName string) ([]*ec2.Instance, error) {
+func (s *Service) TerminateInstance(instanceID string) error {
+	fmt.Printf("Attempting to terminate instance with id %q", instanceID)
+
+	input := &ec2.TerminateInstancesInput{
+		InstanceIds: aws.StringSlice([]string{instanceID}),
+	}
+
+	if _, err := s.EC2.TerminateInstances(input); err != nil {
+		return err
+	}
+
+	glog.V(2).Infof("Terminated instance with id %q", instanceID)
+	return nil
+}
+
+func (s *Service) TerminateInstanceAndWait(instanceID string) error {
+	if err := s.TerminateInstance(instanceID); err != nil {
+		return err
+	}
+
+	fmt.Printf("Waiting for EC2 instance with id %q to terminate", instanceID)
+
+	input := &ec2.DescribeInstancesInput{
+		InstanceIds: aws.StringSlice([]string{instanceID}),
+	}
+
+	if err := s.EC2.WaitUntilInstanceTerminated(input); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) TerminateInstancesByCluster(clusterName string) error {
 	// glog.V(2).Infof("Looking for existing instance for machine %q in cluster %q", machine.Name, cluster.Name)
 
 	instances := []*ec2.Instance{}
@@ -21,7 +57,7 @@ func (s *Service) GetInstanceByCluster(clusterName string) ([]*ec2.Instance, err
 	// case IsNotFound(err):
 	// 	return nil, nil
 	case err != nil:
-		return nil, errors.Wrap(err, "failed to describe instances by tags")
+		return err
 	}
 
 	for _, res := range out.Reservations {
@@ -32,5 +68,5 @@ func (s *Service) GetInstanceByCluster(clusterName string) ([]*ec2.Instance, err
 	}
 
 	// fmt.Printf("Instances: %s", instances)
-	return instances, nil
+	return nil
 }

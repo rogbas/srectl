@@ -33,28 +33,32 @@ func (s *Service) GetAutoScallingGroupsByCluster(clusterName string) ([]*autosca
 	return asGroups, nil
 }
 
-func (s *Service) DeleteAutoScalingGroupsByCluster(clusterName string) error {
+func (s *Service) DeleteAutoScalingGroupsByCluster(clusterName string) ([]string, error) {
+	var launchConfigList []string
+
 	asgs, err := s.GetAutoScallingGroupsByCluster(clusterName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = s.DeleteAutoScalingGroupsAndWait(asgs)
+	launchConfigList, err = s.DeleteAutoScalingGroupsAndWait(asgs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return launchConfigList, nil
 }
 
-func (s *Service) DeleteAutoScalingGroupsAndWait(asgs []*autoscaling.Group) error {
+func (s *Service) DeleteAutoScalingGroupsAndWait(asgs []*autoscaling.Group) ([]string, error) {
 	forceDelete := true
 	var asgsNames []string
+	var launchConfigList []string
 
 	for _, asg := range asgs {
 
 		// Keep list of deleted ASGs for the waiting step
 		asgsNames = append(asgsNames, *asg.AutoScalingGroupName)
+		launchConfigList = append(launchConfigList, *asg.LaunchConfigurationName)
 
 		fmt.Printf("Deleting autoscaling group: %s\n", *asg.AutoScalingGroupName)
 		input := &autoscaling.DeleteAutoScalingGroupInput{
@@ -64,7 +68,7 @@ func (s *Service) DeleteAutoScalingGroupsAndWait(asgs []*autoscaling.Group) erro
 
 		_, err := s.AutoScaling.DeleteAutoScalingGroup(input)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -76,8 +80,8 @@ func (s *Service) DeleteAutoScalingGroupsAndWait(asgs []*autoscaling.Group) erro
 
 	err := s.AutoScaling.WaitUntilGroupNotExists(inputWait)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return launchConfigList, nil
 }
